@@ -1,32 +1,58 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-ctx.canvas.width = window.innerWidth; // Set canvas width
-ctx.canvas.height = window.innerHeight; // Set canvas height
+canvas.width = window.innerWidth; // Set canvas width
+canvas.height = window.innerHeight; // Set canvas height
+
+function roundTo(x, scale = 1) {
+    return Math.floor(x / scale) * scale;
+}
 
 var gridSize = 4; // Grid size
-var cellSize = ctx.canvas.width / 10; // Size of each cell and square
+var cellSize = roundTo(ctx.canvas.height / gridSize + 4, 10); // Size of each cell and square
 var gridStartX = (ctx.canvas.width - cellSize * gridSize) / 2; // Starting X-coordinate for grid
 var gridStartY = (ctx.canvas.height - cellSize * gridSize) / 2; // Starting Y-coordinate for grid
 
-// Draw 4x4 grid in the middle of canvas
-ctx.beginPath();
-for (var i = 0; i <= gridSize; i++) {
-    ctx.moveTo(gridStartX + i * cellSize, gridStartY);
-    ctx.lineTo(gridStartX + i * cellSize, gridStartY + gridSize * cellSize);
-    ctx.moveTo(gridStartX, gridStartY + i * cellSize);
-    ctx.lineTo(gridStartX + gridSize * cellSize, gridStartY + i * cellSize);
-}
-ctx.stroke();
+class Plate {
+    constructor(x, y, w, h, color, icon = null) {
+        this.start_x = this.x = x;
+        this.start_y = this.y = y;
+        this.w = w;
+        this.h = h;
+        this.color = color;
+        this.icon = icon;
+    }
 
-// Draw 16 squares around the perimeter of the grid
-for (var i = 0; i < gridSize; i++) {
-    // Top row
-    ctx.strokeRect(gridStartX - cellSize, gridStartY + i * cellSize, cellSize, cellSize);
-    // Bottom row
-    ctx.strokeRect(gridStartX + gridSize * cellSize, gridStartY + i * cellSize, cellSize, cellSize);
-    // Left column
-    ctx.strokeRect(gridStartX + i * cellSize, gridStartY - cellSize, cellSize, cellSize);
-    // Right column
-    ctx.strokeRect(gridStartX + i * cellSize, gridStartY + gridSize * cellSize, cellSize, cellSize);
+    draw() {
+        ctx.fillStyle = "black";
+        ctx.rect(this.x, this.y, this.w, this.h);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+    }
 }
+
+function setStartPlates(start_x, start_y, dx, dy, offset, num_plates, color, width, height, icons = null) {
+    let plates = [];
+    x = start_x;
+    y = start_y;
+    for (var i = 0; i < num_plates; i++) {
+        np = new Plate(x, y, width, height, color);
+        plates.push(np);
+        x += dx * (width + offset);
+        y += dy * (height + offset);
+    }
+    return plates;
+}
+
+let plates = setStartPlates(10, 10, 1, 0, 20, 4, "red", 50, 50);
+
+function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (i = 0; i < plates.length; i++) {
+        // console.log(plates[i]);
+        plates[i].draw();
+    }
+    requestAnimationFrame(animate);
+}
+
+animate();

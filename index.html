@@ -2,12 +2,58 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Colored Sudoku</title>
     <link rel="stylesheet" href="style.css">
     <link rel="shortcut icon" href="#" />
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
+    <div class="game-page">
+        <header class="game-header">
+            <h1>Colored Sudoku</h1>
+            <p>Drag all 16 tiles onto the board. In every row and column, each color and each symbol may appear only once.</p>
+        </header>
+
+        <main class="game-area">
+            <!-- Trays are filled with tiles by script.js -->
+            <div id="tray-top" class="tray tray-horizontal"></div>
+            <div id="tray-left" class="tray tray-vertical"></div>
+            <div id="tray-right" class="tray tray-vertical"></div>
+            <div id="tray-bottom" class="tray tray-horizontal"></div>
+
+            <div id="board" class="grid-container">
+                <!-- Populate the 4x4 grid with unique IDs -->
+                <!-- Row 1 -->
+                <div id="grid-item-1-1" class="grid-item"></div>
+                <div id="grid-item-1-2" class="grid-item"></div>
+                <div id="grid-item-1-3" class="grid-item"></div>
+                <div id="grid-item-1-4" class="grid-item"></div>
+
+                <!-- Row 2 -->
+                <div id="grid-item-2-1" class="grid-item"></div>
+                <div id="grid-item-2-2" class="grid-item"></div>
+                <div id="grid-item-2-3" class="grid-item"></div>
+                <div id="grid-item-2-4" class="grid-item"></div>
+
+                <!-- Row 3 -->
+                <div id="grid-item-3-1" class="grid-item"></div>
+                <div id="grid-item-3-2" class="grid-item"></div>
+                <div id="grid-item-3-3" class="grid-item"></div>
+                <div id="grid-item-3-4" class="grid-item"></div>
+
+                <!-- Row 4 -->
+                <div id="grid-item-4-1" class="grid-item"></div>
+                <div id="grid-item-4-2" class="grid-item"></div>
+                <div id="grid-item-4-3" class="grid-item"></div>
+                <div id="grid-item-4-4" class="grid-item"></div>
+            </div>
+        </main>
+
+        <footer class="game-controls">
+            <p id="status" class="status" role="status"></p>
+            <button id="reset-button" type="button">Reset</button>
+        </footer>
+    </div>
     <script src="script.js"></script>
 </body>
 </html>

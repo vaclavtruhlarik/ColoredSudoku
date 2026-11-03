@@ -1,5 +1,181 @@
-canvas {
+:root {
+    /* Six cells must fit across and down: four on the board plus a tray on each side. */
+    --cell: clamp(36px, calc(min(100vw - 72px, 100vh - 230px) / 6), 84px);
+    --tile-yellow: #f0e442;
+    --tile-red: #d55e00;
+    --tile-blue: #56b4e9;
+    --tile-green: #009e73;
+    --ink: #1a1a1a;
+    --muted: #555555;
+}
+html, body {
+    height: 100%;
+    margin: 0;
+}
+body {
     background-color: #f8f8f8;
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.game-page {
+    display: grid;
+    /* Equal outer rows keep the board in place when the status text changes length. */
+    grid-template-rows: 1fr auto 1fr;
+    justify-items: center;
+    gap: 16px;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 100vh; /* Use vh for full viewport height */
+    padding: 16px;
+    overflow: clip; /* Stops a tile dragged past the window edge from adding scrollbars */
+}
+
+.game-header {
+    align-self: end;
+    max-width: 34rem;
+    text-align: center;
+}
+.game-header h1 {
+    margin: 0 0 4px;
+    font-size: 1.5rem;
+}
+.game-header p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.95rem;
+}
+
+/* The board in the center, with one tray of tiles on each side. */
+.game-area {
+    display: grid;
+    grid-template-areas:
+        ".    top    ."
+        "left board  right"
+        ".    bottom .";
+    gap: 12px;
+}
+#tray-top { grid-area: top; }
+#tray-bottom { grid-area: bottom; }
+#tray-left { grid-area: left; }
+#tray-right { grid-area: right; }
+#board { grid-area: board; }
+
+.tray {
+    display: grid;
+}
+.tray-horizontal {
+    grid-template-columns: repeat(4, var(--cell));
+}
+.tray-vertical {
+    grid-template-rows: repeat(4, var(--cell));
+}
+
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(4, var(--cell)); /* Creates a 4x4 grid */
+    grid-template-rows: repeat(4, var(--cell));
+    border-radius: 4px;
+}
+.grid-container.solved {
+    outline: 4px solid var(--tile-green);
+    outline-offset: 2px;
+}
+
+.grid-item,
+.slot {
+    box-sizing: border-box;
+    width: var(--cell);
+    height: var(--cell);
+    padding: 3px;
+}
+.grid-item {
+    background-color: #808080; /* Gray color */
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+.grid-item.drop-target {
+    background-color: #4d4d4d;
+    box-shadow: inset 0 0 0 3px #ffffff; /* Fills the cell's padding, so it shows around a tile too */
+}
+
+.tile {
+    position: relative;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    padding: 16%;
+    border: 1px solid rgba(0, 0, 0, 0.45);
+    border-radius: 6px;
+    cursor: grab;
+    touch-action: none; /* Lets touch input drag the tile instead of scrolling the page */
+    user-select: none;
+    -webkit-user-select: none;
+}
+.tile img {
     display: block;
-    margin: 0 auto;
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* The icons have different proportions */
+    pointer-events: none;
+}
+.tile-yellow { background-color: var(--tile-yellow); }
+.tile-red { background-color: var(--tile-red); }
+.tile-blue { background-color: var(--tile-blue); }
+.tile-green { background-color: var(--tile-green); }
+
+.tile.dragging {
+    z-index: 10;
+    cursor: grabbing;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* A badge rather than a color change, so a conflict reads the same on any tile color. */
+.tile.conflict {
+    border: 3px solid var(--ink);
+}
+.tile.conflict::after {
+    content: "!";
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background-color: var(--ink);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+}
+
+/* Status text wraps in its own column, so the Reset button never moves. */
+.game-controls {
+    align-self: start;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    gap: 16px;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 34rem;
+}
+.status {
+    margin: 0;
+    padding-top: 8px; /* Lines a single row of text up with the button label */
+    font-size: 0.95rem;
+}
+.status-solved {
+    font-weight: 700;
+}
+#reset-button {
+    padding: 8px 16px;
+    border: 1px solid var(--ink);
+    border-radius: 6px;
+    background-color: #ffffff;
+    color: var(--ink);
+    font: inherit;
+    cursor: pointer;
+}
+#reset-button:hover {
+    background-color: #eeeeee;
 }

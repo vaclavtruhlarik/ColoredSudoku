@@ -1,158 +1,182 @@
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
+const GRID_SIZE = 4;
+const SYMBOLS = ["anchor", "fish", "ship", "tree"];
+// Each color's tiles start in its own tray on one side of the board.
+const TRAY_COLORS = {
+    "tray-top": "yellow",
+    "tray-bottom": "red",
+    "tray-left": "blue",
+    "tray-right": "green",
+};
+const TILE_COUNT = GRID_SIZE * GRID_SIZE;
 
-canvas.width = window.innerWidth; // Set canvas width
-canvas.height = window.innerHeight; // Set canvas height
+const board = document.getElementById("board");
+const statusText = document.getElementById("status");
+const cells = [...board.querySelectorAll(".grid-item")];
+const homeSlots = new Map(); // tile element -> the tray slot it starts in
 
-function roundTo(x, scale = 1) {
-    return Math.floor(x / scale) * scale;
+// Every row and every column of the board, as lists of cells.
+const lines = [];
+for (let i = 0; i < GRID_SIZE; i++) {
+    lines.push(cells.slice(i * GRID_SIZE, (i + 1) * GRID_SIZE));
+    lines.push(cells.filter((_, index) => index % GRID_SIZE === i));
 }
 
-var gridSize = 4; // Grid size
-var cellSize = roundTo(ctx.canvas.height / (gridSize + 4), 10); // Size of each cell and square
-var gridStartX = (ctx.canvas.width - cellSize * gridSize) / 2; // Starting X-coordinate for grid
-var gridStartY = (ctx.canvas.height - cellSize * gridSize) / 2; // Starting Y-coordinate for grid
-console.log(gridSize, cellSize, gridStartX, gridStartY);
+function createTile(color, symbol) {
+    const tile = document.createElement("div");
+    tile.className = `tile tile-${color}`;
+    tile.dataset.color = color;
+    tile.dataset.symbol = symbol;
+    tile.addEventListener("pointerdown", startDrag);
+    tile.addEventListener("pointermove", moveDrag);
+    tile.addEventListener("pointerup", endDrag);
+    tile.addEventListener("pointercancel", cancelDrag);
 
-class Plate {
-    constructor(x, y, w, h, color, icon) {
-        this.start_x = this.x = x;
-        this.start_y = this.y = y;
-        this.w = w;
-        this.h = h;
-        this.color = color;
-        this.icon = new Image();
-        this.icon.src = icon;
-    }
-
-    draw() {
-        ctx.beginPath();
-        ctx.fillStyle = "black";
-        ctx.rect(this.x, this.y, this.w, this.h);
-        ctx.stroke();
-        ctx.fillStyle = this.color;
-        ctx.fill();
-        ctx.closePath();
-        const margin = roundTo(this.w / 10, 10);
-        ctx.drawImage(this.icon, this.x + margin, this.y + margin, this.w - 2 * margin, this.h - 2 * margin);
-    }
+    const icon = document.createElement("img");
+    icon.src = `icons/${symbol}.svg`;
+    icon.alt = `${color} ${symbol}`;
+    icon.draggable = false;
+    tile.append(icon);
+    return tile;
 }
 
-class Grid {
-    constructor(x, y, offset, rows, cols, color, cell_w, cell_h, icons) {
-        this.x = x;
-        this.y = y;
-        this.offset = offset;
-        this.rows = rows;
-        this.cols = cols;
-        this.color = color;
-        this.cell_w = cell_w;
-        this.cell_h = cell_h;
-        this.grid = setGrid(x, y, offset, rows, cols, color, cell_w, cell_h, icons);
-    }
-
-    draw() {
-        for (var r = 0; r < this.rows; r++) {
-            for (var c = 0; c < this.cols; c++) {
-                this.grid[r][c].draw();
-            }
+function createTrays() {
+    for (const [trayId, color] of Object.entries(TRAY_COLORS)) {
+        const tray = document.getElementById(trayId);
+        for (const symbol of SYMBOLS) {
+            const slot = document.createElement("div");
+            slot.className = "slot";
+            const tile = createTile(color, symbol);
+            slot.append(tile);
+            tray.append(slot);
+            homeSlots.set(tile, slot);
         }
     }
 }
 
-function setStartPlates(start_x, start_y, dx, dy, offset, num_plates, color, width, height, icons) {
-    let plates = [];
-    let x = start_x;
-    let y = start_y;
-    for (var i = 0; i < num_plates; i++) {
-        const np = new Plate(x, y, width, height, color, icons[i]);
-        plates.push(np);
-        x += dx * (width + offset);
-        y += dy * (height + offset);
+// Returns the tiles that share a color or symbol with another tile in the same row or column.
+function findConflicts() {
+    const conflicts = new Set();
+    for (const line of lines) {
+        const tiles = line.map((cell) => cell.firstElementChild).filter(Boolean);
+        for (const a of tiles) {
+            for (const b of tiles) {
+                const clash = a.dataset.color === b.dataset.color || a.dataset.symbol === b.dataset.symbol;
+                if (a !== b && clash) {
+                    conflicts.add(a);
+                    conflicts.add(b);
+                }
+            }
+        }
     }
-    return plates;
+    return conflicts;
 }
 
-function setGrid(start_x, start_y, offset, rows, cols, color, cell_w, cell_h, icons) {
-    let grid = [];
-    let x = start_x;
-    let y = start_y;
-    for (var i = 0; i < rows; i++) {
-        let g = setStartPlates(x, y, 1, 0, offset, cols, color, cell_w, cell_h, icons);
-        grid.push(g);
-        y += cell_h + offset;
+function updateGameState() {
+    const placed = cells.filter((cell) => cell.firstElementChild).length;
+    const conflicts = findConflicts();
+    const solved = placed === TILE_COUNT && conflicts.size === 0;
+
+    for (const tile of homeSlots.keys()) {
+        tile.classList.toggle("conflict", conflicts.has(tile));
     }
-    return grid;
+    board.classList.toggle("solved", solved);
+    statusText.classList.toggle("status-solved", solved);
+
+    if (solved) {
+        statusText.textContent = "Solved! Every row and column is correct.";
+    } else if (conflicts.size > 0) {
+        statusText.textContent = `${placed} of ${TILE_COUNT} tiles placed. ${conflicts.size} tiles break the rules.`;
+    } else {
+        statusText.textContent = `${placed} of ${TILE_COUNT} tiles placed.`;
+    }
 }
 
-let grid = new Grid(gridStartX, gridStartY, 0, gridSize, gridSize, "gray", cellSize, cellSize, [
-    "icons/anchor.svg",
-    "icons/fish.svg",
-    "icons/ship.svg",
-    "icons/tree.svg",
-]);
-console.log(grid);
-
-let offset = 20;
-let yellows = setStartPlates(
-    gridStartX - 1.5 * offset,
-    gridStartY - cellSize - 1.5 * offset,
-    1,
-    0,
-    offset,
-    gridSize,
-    "yellow",
-    cellSize,
-    cellSize,
-    ["icons/anchor.svg", "icons/fish.svg", "icons/ship.svg", "icons/tree.svg"]
-);
-let reds = setStartPlates(
-    gridStartX - 1.5 * offset,
-    gridStartY + cellSize * gridSize + 1.5 * offset,
-    1,
-    0,
-    offset,
-    gridSize,
-    "red",
-    cellSize,
-    cellSize,
-    ["icons/anchor.svg", "icons/fish.svg", "icons/ship.svg", "icons/tree.svg"]
-);
-let blues = setStartPlates(
-    gridStartX - cellSize - 1.5 * offset,
-    gridStartY - 1.5 * offset,
-    0,
-    1,
-    offset,
-    gridSize,
-    "blue",
-    cellSize,
-    cellSize,
-    ["icons/anchor.svg", "icons/fish.svg", "icons/ship.svg", "icons/tree.svg"]
-);
-let greens = setStartPlates(
-    gridStartX + cellSize * gridSize + 1.5 * offset,
-    gridStartY - 1.5 * offset,
-    0,
-    1,
-    offset,
-    gridSize,
-    "green",
-    cellSize,
-    cellSize,
-    ["icons/anchor.svg", "icons/fish.svg", "icons/ship.svg", "icons/tree.svg"]
-);
-
-function animate() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    grid.draw();
-    for (var i = 0; i < gridSize; i++) {
-        yellows[i].draw();
-        reds[i].draw();
-        blues[i].draw();
-        greens[i].draw();
+function resetGame() {
+    for (const [tile, slot] of homeSlots) {
+        slot.append(tile);
     }
-    requestAnimationFrame(animate);
+    updateGameState();
 }
 
-animate();
+// Moves a tile to a board cell, or back to its tray when dropped off the board.
+// A tile dropped on an occupied cell swaps with it if it came from the board;
+// if it came from a tray, the tile it replaces goes back to its own tray.
+function placeTile(tile, targetCell) {
+    const origin = tile.parentElement;
+    if (!targetCell) {
+        homeSlots.get(tile).append(tile);
+        return;
+    }
+    if (targetCell === origin) {
+        return;
+    }
+    const occupant = targetCell.firstElementChild;
+    if (occupant) {
+        (cells.includes(origin) ? origin : homeSlots.get(occupant)).append(occupant);
+    }
+    targetCell.append(tile);
+}
+
+let drag = null; // { tile, pointerId, startX, startY, targetCell } while a tile is being dragged
+
+function cellAt(x, y) {
+    return document.elementsFromPoint(x, y).find((el) => el.classList.contains("grid-item")) ?? null;
+}
+
+function setDropTarget(cell) {
+    drag.targetCell?.classList.remove("drop-target");
+    cell?.classList.add("drop-target");
+    drag.targetCell = cell;
+}
+
+function startDrag(event) {
+    if (drag || event.button !== 0) {
+        return;
+    }
+    const tile = event.currentTarget;
+    tile.setPointerCapture(event.pointerId);
+    tile.classList.add("dragging");
+    drag = { tile, pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, targetCell: null };
+    setDropTarget(cellAt(event.clientX, event.clientY));
+}
+
+function moveDrag(event) {
+    if (!drag || event.pointerId !== drag.pointerId) {
+        return;
+    }
+    const dx = event.clientX - drag.startX;
+    const dy = event.clientY - drag.startY;
+    drag.tile.style.transform = `translate(${dx}px, ${dy}px)`;
+    setDropTarget(cellAt(event.clientX, event.clientY));
+}
+
+// Clears the drag visuals and state, and returns the tile and the cell it was over.
+function finishDrag() {
+    const { tile, targetCell } = drag;
+    setDropTarget(null);
+    tile.classList.remove("dragging");
+    tile.style.transform = "";
+    drag = null;
+    return { tile, targetCell };
+}
+
+function endDrag(event) {
+    if (!drag || event.pointerId !== drag.pointerId) {
+        return;
+    }
+    const { tile, targetCell } = finishDrag();
+    placeTile(tile, targetCell);
+    updateGameState();
+}
+
+// The browser interrupted the drag (e.g. a system gesture), so leave the tile where it was.
+function cancelDrag(event) {
+    if (drag && event.pointerId === drag.pointerId) {
+        finishDrag();
+    }
+}
+
+document.getElementById("reset-button").addEventListener("click", resetGame);
+
+createTrays();
+updateGameState();
